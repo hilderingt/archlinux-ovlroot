@@ -1,13 +1,14 @@
 #!/bin/sh
 
 OVLROOT_INIT_ROOTMNT="/new_root"
-OVLROOT_CFGDIR="/etc/ro-root"
-OVLROOT_SWAP="on"
+OVLROOT_CFGDIR="/etc/ovlroot.d"
 OVLROOT_BASE="tmpfs"
-OVLROOT_BASE_DIR="/.overlay"
+OVLROOT_BASE_DIR="/.ovlroot"
 OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
+OVLROOT_FSTAB="/etc/fstab"
+OVLROOT_NEW_FSTAB="/tmp/new_fstab"
 
 opts_add_replace() {
 	local opts="$1" opt1="$2" opt2="$3"
@@ -48,17 +49,30 @@ run_latehook() {
 
 	[ "$OVLROOT_BASE" = "tmpfs" ] && OVLROOT_BASE_TYPE="tmpfs"
 
+	ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
+	ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
+	ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
+
 	mkdir -p "$OVLROOT_BASE_DIR"
+
 	mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS"}" \
 	      "${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE"}" \
 	      "ovlroot-tmpfs" "$OVLROOT_BASE_DIR"
 
-	mkdir -p "$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
-	mkdir -p "$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
-	mkdir -p "$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
-	mount -o "move" "$OVLROOT_INIT_ROOTMNT" \
-	                "$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
+	mkdir -p "$ovl_lower_dir"
+	mkdir -p "$ovl_upper_dir/rootfs"
+	mkdir -p "$ovl_work_dir/rootfs"
 
+	mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
+	mount -t "overlay" \
+	      -o "lowerdir=$ovl_lower_dir,upperdir=$ovl_upper_dir/rootfs \
+	          workdir=$ovl_work_dir/rootfs" "ovlroot" "$OVLROOT_INIT_ROOTMNT"
+
+	mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
+
+	mount -o "move" "$OVLROOT_MNT_BASE_DIR" \
+	                "$OVLROOT_BASE_DIR/$OVLROOT_INIT_ROOTMNT"
+	      
 	while IFS= read -r line; do
 		[ "x$line" = "x" ] && continue
 
@@ -72,7 +86,7 @@ run_latehook() {
 		[ "x$opts"  = "x" ] && return 1
 
 		if [ "$type" = "swap" ]; then
-			if "$OVLROOT_SWAP" = "off" ]; then			
+			if [ "x$OVLROOT_SWAP" = "xoff" ]; then			
 				printf "# "
 			fi
 
@@ -95,7 +109,7 @@ run_latehook() {
 
 		for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
 			if [ "$_dir" = "$dir" ]; then
-				type="ro-root.overlay"
+				type="ovlroot"
 				found=y
 				break
 			fi
@@ -117,5 +131,7 @@ run_latehook() {
 		else
 			echo $line
 		fi
-	done <"$OVLROOT_BASE/$OVLROOT_LOWER_DIR/etc/fstab" >"/tmp/new_fstab"
+	done <"$ovl_lower_dir/$OVLROOT_FSTAB" >"/tmp/new_fstab"
+
+	mv "/tmp/new_fstab" "$ovl_lower_dir/$OVLROOT_FSTAB"
 }
