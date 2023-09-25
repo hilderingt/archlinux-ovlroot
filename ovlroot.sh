@@ -34,12 +34,13 @@ opts_add_replace() {
 }
 
 run_latehook() {
+	local ovl_lower_dir= ovl_upper_dir= ovl_work_dir=
 	local fs= dir= type= opts= dump= pass= err=
 	local line= _line= _dir=
 
 	[ "x$ovlroot" = "x" ] && return 0
 
-	if [ "$ovlroot" != "y" -a ]; then
+	if [ "$ovlroot" != "y" ]; then
 		if [ -s "$OVLROOT_CFGDIR/$ovlroot.conf" ]; then
 			. "$OVLROOT_CFGDIR/$ovlroot.conf"
 		else
@@ -57,7 +58,7 @@ run_latehook() {
 
 	mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS"}" \
 	      "${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE"}" \
-	      "ovlroot-tmpfs" "$OVLROOT_BASE_DIR"
+	      "$OVLROOT_BASE" "$OVLROOT_BASE_DIR"
 
 	mkdir -p "$ovl_lower_dir"
 	mkdir -p "$ovl_upper_dir/rootfs"
@@ -131,7 +132,10 @@ run_latehook() {
 		else
 			echo $line
 		fi
-	done <"$ovl_lower_dir/$OVLROOT_FSTAB" >"/tmp/new_fstab"
+	done <"$ovl_lower_dir/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
-	mv "/tmp/new_fstab" "$ovl_lower_dir/$OVLROOT_FSTAB"
+	mv "$OVLROOT_NEW_FSTAB" "$ovl_lower_dir/$OVLROOT_FSTAB"
+	rmdir "$OVLROOT_BASE_DIR"
+
+	return 0
 }
