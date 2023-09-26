@@ -64,7 +64,7 @@ run_latehook() {
 
 	mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
 	mount -t "overlay" \
-	      -o "lowerdir=$ovl_lower_dir,upperdir=$ovl_upper_dir/rootfs \
+	      -o "lowerdir=$ovl_lower_dir,upperdir=$ovl_upper_dir/rootfs\
 	          workdir=$ovl_work_dir/rootfs" "ovlroot" "$OVLROOT_INIT_ROOTMNT"
 
 	mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
