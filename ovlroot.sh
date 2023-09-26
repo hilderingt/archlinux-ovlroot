@@ -2,7 +2,7 @@
 
 OVLROOT_INIT_ROOTMNT="/new_root"
 OVLROOT_CFGDIR="/etc/ovlroot.d"
-OVLROOT_BASE="tmpfs"
+OVLROOT_BASE_TYPE="tmpfs"
 OVLROOT_BASE_DIR="/.ovlroot"
 OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
@@ -36,7 +36,7 @@ opts_add_replace() {
 run_latehook() {
 	local ovl_lower_dir= ovl_upper_dir= ovl_work_dir=
 	local fs= dir= type= opts= dump= pass= err=
-	local line= _line= _dir=
+	local skip= line= _line= _dir=
 
 	[ "x$ovlroot" = "x" ] && return 0
 
@@ -48,8 +48,6 @@ run_latehook() {
 		fi
 	fi
 
-	[ "$OVLROOT_BASE" = "tmpfs" ] && OVLROOT_BASE_TYPE="tmpfs"
-
 	ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 	ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 	ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
@@ -58,7 +56,7 @@ run_latehook() {
 
 	mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS"}" \
 	      "${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE"}" \
-	      "$OVLROOT_BASE" "$OVLROOT_BASE_DIR"
+	      "${OVLROOT_BASE_DEV:-"$OVLROOT_BASE_TYPE"}" "$OVLROOT_BASE_DIR"
 
 	mkdir -p "$ovl_lower_dir"
 	mkdir -p "$ovl_upper_dir/rootfs"
@@ -95,28 +93,26 @@ run_latehook() {
 			continue
 		fi
 
+		skip=n
+
 		if [ "$dir" = "/" ]; then
 			opts="$(opts_add_replace "$opts" "ro" "rw")"
 			opts="$(opts_add_replace "$opts" "remount")"
-
-			printf "%s\t%s\t%s\t%s\t%s\t%s\t%s" \
-			       "$fs" "$OVLROOT_BASE/$OVLROOT_LOWER_DIR" \
-			       "$type" "$opts" "${dump:=0}" "${pass:=0}"
-
-			continue
+			dir="$ovl_lower_dir"
+			skip=y
 		fi
 
-		found=n
+		if [ "$skip" = "n" ]; then
+			for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
+				if [ "$_dir" = "$dir" ]; then
+					type="ovlroot"
+					skip=y
+					break
+				fi
+			done
+		fi
 
-		for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
-			if [ "$_dir" = "$dir" ]; then
-				type="ovlroot"
-				found=y
-				break
-			fi
-		done
-
-		if [ "$found" = "n" ]; then
+		if [ "$skip" = "n" ]; then
 			for _dir in $(echo "$OVLROOT_RDONLY" | tr "," " "); do
 				if [ "$_dir" = "$dir" ]; then
 					opts="$(opt_add_replace "$opts" "ro" "rw")"
@@ -126,7 +122,7 @@ run_latehook() {
 			done
 		fi
 
-		if [ "$found" = "y" ]; then
+		if [ "$skip" = "y" ]; then
 			printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
 		    	   "$fs" "$dir" "$type" "$opts" "${dump:=0}" "${pass:=0}"
 		else
