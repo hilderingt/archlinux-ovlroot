@@ -9,6 +9,9 @@ OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
 OVLROOT_FSTAB="/etc/fstab"
 OVLROOT_NEW_FSTAB="/tmp/new_fstab"
+OVLROOT_OVL_OPTS_ROOT=""
+OVLROOT_OVL_OPTS_OTHER=""
+#OVLROOT_SWAP="off"
 
 opts_add_replace() {
 	local opts="$1" opt1="$2" opt2="$3"
@@ -18,13 +21,11 @@ opts_add_replace() {
 		case $opt in
 			$opt1)
 				avail=y
-				break
-				;;
+				break ;;
 			$opt2)
 				ret="${ret:+${ret},}${opt1}"
 				avail=y
-				break
-				;;
+				break ;;
 		esac
 	done
 
@@ -33,105 +34,110 @@ opts_add_replace() {
 	printf "$ret"
 }
 
-run_latehook() {
-	local ovl_lower_dir= ovl_upper_dir= ovl_work_dir=
-	local fs= dir= type= opts= dump= pass= err=
-	local skip= line= _line= _dir=
+local ovl_lower_dir= ovl_upper_dir= ovl_work_dir=
+local fs= dir= type= opts= dump= pass= err=
+local skip= line= _line= _dir=
 
-	[ "x$ovlroot" = "x" ] && return 0
+[ "x$ovlroot" = "x" ] && return 0
 
-	if [ "$ovlroot" != "y" ]; then
-		if [ -s "$OVLROOT_CFGDIR/$ovlroot.conf" ]; then
-			. "$OVLROOT_CFGDIR/$ovlroot.conf"
-		else
-			return 1
+if [ "$ovlroot" != "y" ]; then
+	if [ -s "$OVLROOT_CFGDIR/$ovlroot.conf" ]; then
+		. "$OVLROOT_CFGDIR/$ovlroot.conf"
+	else
+		return 1
+	fi
+fi
+
+[ "x$OVLROOT_BASE_TYPE" = "x" -a "x$OVLROOT_BASE_DEV" = "x" ] && return 1
+
+ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
+ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
+ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
+
+echo mkdir -p "$OVLROOT_BASE_DIR"
+
+echo mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS "}"\
+"${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE "}"\
+"${OVLROOT_BASE_DEV:-"$OVLROOT_BASE_TYPE"}" "$OVLROOT_BASE_DIR"
+
+echo mkdir -p "$ovl_lower_dir"
+echo mkdir -p "$ovl_upper_dir/rootfs"
+echo mkdir -p "$ovl_work_dir/rootfs"
+
+echo mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
+
+if [ "x$OVLROOT_OVL_OPTS_ROOT" != "x" ]; then
+	opts="${OVLROOT_OVL_OPTS_ROOT},"
+fi
+
+echo mount -t "overlay" -o "${opts}lowerdir=$ovl_lower_dir,\
+upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
+"ovlroot" "$OVLROOT_INIT_ROOTMNT"
+
+echo mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
+
+echo mount -o "move" "$OVLROOT_BASE_DIR" \
+"$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
+      
+while IFS= read -r line; do
+	[ "x$line" = "x" ] && { echo ""; continue; }
+
+	_line="${line%%#*}"
+
+	read -r fs dir type opts dump pass err <<-END
+	$_line
+	END
+
+	[ "x$fs"    = "x" ] && { echo "$line"; continue; }
+	[ "x$err"  != "x" -o "x$opts"  = "x" ] && return 1
+
+	if [ "$type" = "swap" ]; then
+		if [ "x$OVLROOT_SWAP" = "xoff" ]; then			
+			printf "# "
 		fi
+
+		echo "$line"
+		continue
 	fi
 
-	ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
-	ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
-	ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
+	modified=n
 
-	mkdir -p "$OVLROOT_BASE_DIR"
+	if [ "$dir" = "/" ]; then
+		opts="$(opts_add_replace "$opts" "ro" "rw")"
+		opts="$(opts_add_replace "$opts" "remount")"
+		dir="$ovl_lower_dir"
+		modified=y
+	fi
 
-	mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS"}" \
-	      "${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE"}" \
-	      "${OVLROOT_BASE_DEV:-"$OVLROOT_BASE_TYPE"}" "$OVLROOT_BASE_DIR"
-
-	mkdir -p "$ovl_lower_dir"
-	mkdir -p "$ovl_upper_dir/rootfs"
-	mkdir -p "$ovl_work_dir/rootfs"
-
-	mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
-	mount -t "overlay" \
-	      -o "lowerdir=$ovl_lower_dir,upperdir=$ovl_upper_dir/rootfs\
-workdir=$ovl_work_dir/rootfs" "ovlroot" "$OVLROOT_INIT_ROOTMNT"
-
-	mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
-
-	mount -o "move" "$OVLROOT_BASE_DIR" \
-	                "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
-	      
-	while IFS= read -r line; do
-		[ "x$line" = "x" ] && continue
-
-		_line="${line%%#*}"
-
-		read -r fs dir type opts dump pass err <<-END
-		$_line
-		END
-
-		[ "x$err"  != "x" ] && return 1
-		[ "x$opts"  = "x" ] && return 1
-
-		if [ "$type" = "swap" ]; then
-			if [ "x$OVLROOT_SWAP" = "xoff" ]; then			
-				printf "# "
+	if [ "$modified" = "n" -a "x$OVLROOT_OVERLAY" != "x" ]; then
+		for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
+			if [ "$_dir" = "$dir" ]; then
+				type="ovlroot"
+				modified=y
+				break
 			fi
+		done
+	fi
 
-			echo "$line"
-			continue
-		fi
+	if [ "$modified" = "n" -a "x$OVLROOT_RDONLY" != "x" ]; then
+		for _dir in $(echo "$OVLROOT_RDONLY" | tr "," " "); do
+			if [ "$_dir" = "$dir" ]; then
+				opts="$(opt_add_replace "$opts" "ro" "rw")"
+				modified=y
+				break
+			fi
+		done
+	fi
 
-		skip=n
+	if [ "$modified" = "y" ]; then
+		printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
+	    	   "$fs" "$dir" "$type" "$opts" "${dump:=0}" "${pass:=0}"
+	else
+		echo $line
+	fi
+done <"$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
-		if [ "$dir" = "/" ]; then
-			opts="$(opts_add_replace "$opts" "ro" "rw")"
-			opts="$(opts_add_replace "$opts" "remount")"
-			dir="$ovl_lower_dir"
-			skip=y
-		fi
+echo mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT$OVLROOT_FSTAB"
+echo rmdir "$OVLROOT_BASE_DIR"
 
-		if [ "$skip" = "n" ]; then
-			for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
-				if [ "$_dir" = "$dir" ]; then
-					type="ovlroot"
-					skip=y
-					break
-				fi
-			done
-		fi
-
-		if [ "$skip" = "n" ]; then
-			for _dir in $(echo "$OVLROOT_RDONLY" | tr "," " "); do
-				if [ "$_dir" = "$dir" ]; then
-					opts="$(opt_add_replace "$opts" "ro" "rw")"
-					found=y
-					break
-				fi
-			done
-		fi
-
-		if [ "$skip" = "y" ]; then
-			printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
-		    	   "$fs" "$dir" "$type" "$opts" "${dump:=0}" "${pass:=0}"
-		else
-			echo $line
-		fi
-	done <"$ovl_lower_dir/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
-
-	mv "$OVLROOT_NEW_FSTAB" "$ovl_lower_dir/$OVLROOT_FSTAB"
-	rmdir "$OVLROOT_BASE_DIR"
-
-	return 0
-}
+return 0

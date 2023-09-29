@@ -1,0 +1,33 @@
+#!/bin/sh
+
+OVLROOT_CFGDIR="/etc/ovlroot.d"
+
+while getopt "svnfN:o:" opt; do
+	case "$opt" in
+		s | v | n | f) cmdopts="${cmdopts:+"$cmdopts "}-$opt" ;;
+		N) cmdopts="${cmdopts:+"$cmdopts "}-N $OPTARG" ;;
+		o) mntopts="$OPTARG" ;;
+	esac
+done
+
+for cmd in $(cat "/proc/cmdline"); do
+	case "$cmd" in
+		ovlroot=*)
+			conf="${cmd#"ovlroot="}" ;;
+	esac
+done
+
+if [ -s "$OVLROOT_CFGDIR/$conf" ]; then
+	. "$OVLROOT_CFGDIR/$conf"
+fi
+
+if [ "x$OVLROOT_OVL_OPTS_OTHER" != "x" ]; then
+	opts="$OVLROOT_OVL_OPTS_OTHER,"
+fi
+
+for opt in $(echo $mntopts | tr "," " "); do
+	case "$opt" in
+		ovlroot_realfs=*)
+			type="${opt#"ovlroot_realfs="}";;
+	esac
+done
