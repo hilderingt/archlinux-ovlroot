@@ -1,16 +1,21 @@
 #!/bin/sh
 
 OVLROOT_CFGDIR="/etc/ovlroot.d"
+OVLROOT_BASE_DIR="/.ovlroot"
+OVLROOT_LOWER_DIR="lowerdir"
+OVLROOT_UPPER_DIR="upperdir"
+OVLROOT_WORK_DIR="workdir"
 
 mnt_dev="$1"
 mnt_dir="$2"
 shift 2
 
-while getopt "svnfN:o:" opt; do
+while getopts "svnfN:o:t:" opt; do
 	case "$opt" in
 		s | v | n | f) cmd_opts="${cmd_opts:+"$cmd_opts "}-$opt" ;;
-		N) cmd_opts="${cmd_opts:+"$cmd_opts "}-N $OPTARG" ;;
+		N) cmd_opts="${cmd_opts:+"$cmd_opts "}-$opt $OPTARG" ;;
 		o) cmd_mntopts="$OPTARG" ;;
+		t) : ;;
 	esac
 done
 
@@ -21,16 +26,16 @@ for cmd in $(cat "/proc/cmdline"); do
 	esac
 done
 
-if [ -s "$OVLROOT_CFGDIR/$conf" ]; then
+if [ "x$conf" != "x" -a -s "$OVLROOT_CFGDIR/$conf" ]; then
 	. "$OVLROOT_CFGDIR/$conf"
 fi
 
 for opt in $(echo $cmd_mntopts | tr "," " "); do
 	case "$opt" in
 		ovlroot_realfs=*)
-			mnt_type="${opt#"ovlroot_realfs="}";;
+			mnt_type="${opt#"ovlroot_realfs="}" ;;
 		*)
-			mnt_opts="${mnt_opts:+"$mntopts,"}$opt" ;;
+			mnt_opts="${mnt_opts:+"$mnt_opts,"}$opt" ;;
 	esac
 done
 
@@ -45,10 +50,10 @@ ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 mkdir -p "$ovl_upper_dir$mnt_dir"
 mkdir -p "$ovl_work_dir$mnt_dir"
 
-mount "$cmd_opts" -t "$mnt_type" -o "$mnt_opts" \
+mount $cmd_opts -t "$mnt_type" -o "$mnt_opts" \
 "$mnt_dev" "$ovl_lower_dir$mnt_dir"
-mount "$cmd_opts" -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
-upperdir=$ovl_upper_dir$mnt_dir,workdir=$ovl_work_dir$mnt_dir"
+mount $cmd_opts -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
+upperdir=$ovl_upper_dir$mnt_dir,workdir=$ovl_work_dir$mnt_dir" \
 "ovlroot" "$mnt_dir"
 
 exit 0

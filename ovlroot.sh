@@ -9,9 +9,6 @@ OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
 OVLROOT_FSTAB="/etc/fstab"
 OVLROOT_NEW_FSTAB="/tmp/new_fstab"
-OVLROOT_OVL_OPTS_ROOT=""
-OVLROOT_OVL_OPTS_OTHER=""
-#OVLROOT_SWAP="off"
 
 opts_add_replace() {
 	local opts="$1" opt1="$2" opt2="$3"
@@ -52,30 +49,28 @@ ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
-echo mkdir -p "$OVLROOT_BASE_DIR"
+mkdir -p "$OVLROOT_BASE_DIR"
 
-echo mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS "}"\
+mount "${OVLROOT_BASE_OPTS:+"-o $OVLROOT_BASE_OPTS "}"\
 "${OVLROOT_BASE_TYPE:+"-t $OVLROOT_BASE_TYPE "}"\
 "${OVLROOT_BASE_DEV:-"$OVLROOT_BASE_TYPE"}" "$OVLROOT_BASE_DIR"
 
-echo mkdir -p "$ovl_lower_dir"
-echo mkdir -p "$ovl_upper_dir/rootfs"
-echo mkdir -p "$ovl_work_dir/rootfs"
+mkdir -p "$ovl_lower_dir"
+mkdir -p "$ovl_upper_dir/rootfs"
+mkdir -p "$ovl_work_dir/rootfs"
 
-echo mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
+mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
 
 if [ "x$OVLROOT_OVL_OPTS_ROOT" != "x" ]; then
 	ovlopts="${OVLROOT_OVL_OPTS_ROOT},"
 fi
 
-echo mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
+mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
 "ovlroot" "$OVLROOT_INIT_ROOTMNT"
 
-echo mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
-
-echo mount -o "move" "$OVLROOT_BASE_DIR" \
-"$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
+mkdir -p "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
+mount -o "move" "$OVLROOT_BASE_DIR" "$OVLROOT_INIT_ROOTMNT$OVLROOT_BASE_DIR"
       
 while IFS= read -r line; do
 	[ "x$line" = "x" ] && { echo ""; continue; }
@@ -110,6 +105,8 @@ while IFS= read -r line; do
 	if [ "$modified" = "n" -a "x$OVLROOT_OVERLAY" != "x" ]; then
 		for _dir in $(echo "$OVLROOT_OVERLAY" | tr "," " "); do
 			if [ "$_dir" = "$dir" ]; then
+				opts="$(opts_add_replace "$opts" "ro" "rw")"
+				opts="ovlroot_realfs=$type,$opts"
 				type="ovlroot"
 				modified=y
 				break
@@ -133,9 +130,9 @@ while IFS= read -r line; do
 	else
 		echo $line
 	fi
-done <"$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
+done <"$ovl_lower_dir$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
-echo mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT$OVLROOT_FSTAB"
-echo rmdir "$OVLROOT_BASE_DIR"
+mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT$OVLROOT_FSTAB"
+rmdir "$OVLROOT_BASE_DIR"
 
 return 0
