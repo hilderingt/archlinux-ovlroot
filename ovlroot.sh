@@ -38,11 +38,9 @@ local ovl_lower_dir= ovl_upper_dir= ovl_work_dir=
 local fs= dir= type= opts= dump= pass= err=
 local skip= line= _line= _dir=
 
-[ "x$ovlroot" = "x" ] && return 0
-
-if [ "$ovlroot" != "y" ]; then
-	if [ -s "$OVLROOT_CFGDIR/$ovlroot.conf" ]; then
-		. "$OVLROOT_CFGDIR/$ovlroot.conf"
+if [ "x$1" != "x" -a "$1" != "default" ]; then
+	if [ -s "$OVLROOT_CFGDIR/$1.conf" ]; then
+		. "$OVLROOT_CFGDIR/$1.conf"
 	else
 		return 1
 	fi
@@ -67,10 +65,10 @@ echo mkdir -p "$ovl_work_dir/rootfs"
 echo mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"
 
 if [ "x$OVLROOT_OVL_OPTS_ROOT" != "x" ]; then
-	opts="${OVLROOT_OVL_OPTS_ROOT},"
+	ovlopts="${OVLROOT_OVL_OPTS_ROOT},"
 fi
 
-echo mount -t "overlay" -o "${opts}lowerdir=$ovl_lower_dir,\
+echo mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
 "ovlroot" "$OVLROOT_INIT_ROOTMNT"
 
