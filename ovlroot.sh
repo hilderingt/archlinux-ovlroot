@@ -100,8 +100,8 @@ run_latehook() {
 	fi
 
 	if ! mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
-	   upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
-	   "ovlroot" "$OVLROOT_INIT_ROOTMNT"; then
+	     upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
+	     "ovlroot" "$OVLROOT_INIT_ROOTMNT"; then
 		mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
 		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
@@ -125,7 +125,7 @@ run_latehook() {
 	fi
 
 	if ! mount -o "move" "$OVLROOT_BASE_DIR" \
-	   "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
+	     "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
 		rmdir --ignore-fail-on-non-empty \
 		"$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
 		umount "$OVLROOT_INIT_ROOTMNT"
@@ -200,7 +200,7 @@ run_latehook() {
 	done <"$ovl_lower_dir/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
 	if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
-		mount -o "move" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
+		 mount -o "move" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
 		"$OVLROOT_BASE_DIR"
 		rmdir --ignore-fail-on-non-empty \
 		"$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
