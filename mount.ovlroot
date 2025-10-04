@@ -5,6 +5,7 @@ OVLROOT_BASE_DIR="/.ovlroot"
 OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
+OVLROOT_OVL_OPTS_OTHER=""
 
 mnt_dev="$1"
 mnt_dir="$2"
@@ -26,7 +27,7 @@ for cmd in $(cat "/proc/cmdline"); do
 	esac
 done
 
-if [ "x$conf" != "x" -a -s "$OVLROOT_CFGDIR/$conf" ]; then
+if [ "x$conf" != "x" -a "$conf" != "y" -a -s "$OVLROOT_CFGDIR/$conf" ]; then
 	. "$OVLROOT_CFGDIR/$conf"
 fi
 
