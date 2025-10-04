@@ -47,13 +47,13 @@ ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
-mkdir -p "$ovl_upper_dir$mnt_dir"
-mkdir -p "$ovl_work_dir$mnt_dir"
+mkdir -p "$ovl_upper_dir/$mnt_dir"
+mkdir -p "$ovl_work_dir/$mnt_dir"
 
 mount $cmd_opts -t "$mnt_type" -o "$mnt_opts" \
-"$mnt_dev" "$ovl_lower_dir$mnt_dir"
+"$mnt_dev" "$ovl_lower_dir/$mnt_dir"
 mount $cmd_opts -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
-upperdir=$ovl_upper_dir$mnt_dir,workdir=$ovl_work_dir$mnt_dir" \
+upperdir=$ovl_upper_dir/$mnt_dir,workdir=$ovl_work_dir/$mnt_dir" \
 "ovlroot" "$mnt_dir"
 
 exit 0
