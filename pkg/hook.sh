@@ -1,12 +1,14 @@
 #!/bin/sh
 
 run_latehook() {
-	local conf="default"
+	local conf=""
 
-	[ "x$ovlroot" = "x" ] && return 0
-	[ "$ovlroot" != "y" ] && conf="$ovlroot"
+	if [ "x$ovlroot" != "x" -a "$ovlroot" != "y" ]; then
+		conf="$ovlroot"
+	fi
 
 	/bin/ovlroot.sh "$conf"
 
 	return 0
 }
+
