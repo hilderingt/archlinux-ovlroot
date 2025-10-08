@@ -11,8 +11,10 @@ OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
 OVLROOT_FSTAB="/etc/fstab"
 OVLROOT_NEW_FSTAB="/tmp/new_fstab"
+OVLROOT_LOWER_RDONLY="yes"
 OVLROOT_OVL_OPTS_ROOT=""
 OVLROOT_OVERLAY=""
+OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
 OVLROOT_SWAP=""
 
@@ -48,7 +50,7 @@ fi
 ovl_lower_dir=""
 ovl_upper_dir=""
 ovl_work_dir=""
-root_mode="rw"
+root_mode="ro"
 fs=""
 dir="" 
 type=""
@@ -119,16 +121,18 @@ if ! mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"; then
 	exit 1
 fi
 
-if ! mount -o remount,ro "$ovl_lower_dir"; then
-	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
-	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
-	rmdir --ignore-fail-on-non-empty "$ovl_work_dir/rootfs"
-	rmdir --ignore-fail-on-non-empty "$ovl_work_dir"
-	rmdir --ignore-fail-on-non-empty "$ovl_lower_dir"
-	umount "$OVLROOT_BASE_DIR"
-	rmdir --ignore-fail-on-non-empty "$OVLROOT_BASE_DIR"
-	exit 1
+if [ "$root_mode" = "rw" -a "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+	if ! mount -o remount,ro "$ovl_lower_dir"; then
+		mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
+		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
+		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
+		rmdir --ignore-fail-on-non-empty "$ovl_work_dir/rootfs"
+		rmdir --ignore-fail-on-non-empty "$ovl_work_dir"
+		rmdir --ignore-fail-on-non-empty "$ovl_lower_dir"
+		umount "$OVLROOT_BASE_DIR"
+		rmdir --ignore-fail-on-non-empty "$OVLROOT_BASE_DIR"
+		exit 1
+	fi
 fi
 
 if [ "x$OVLROOT_OVL_OPTS_ROOT" != "x" ]; then
@@ -138,7 +142,10 @@ fi
 if ! mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
 "ovlroot" "$OVLROOT_INIT_ROOTMNT"; then
-	#mount -o remount,$root_mode "$ovl_lower_dir"
+	if [ "$root_mode" = "rw" -a "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+		mount -o remount,$root_mode "$ovl_lower_dir"
+	fi
+
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
@@ -152,7 +159,11 @@ fi
 
 if ! mkdir -p "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
 	umount "$OVLROOT_INIT_ROOTMNT"
-	mount -o remount,$root_mode "$ovl_lower_dir"
+
+	if [ "$root_mode" = "rw" -a "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+		mount -o remount,$root_mode "$ovl_lower_dir"
+	fi
+
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
@@ -169,7 +180,11 @@ if ! mount -o "move" "$OVLROOT_BASE_DIR" \
 	rmdir --ignore-fail-on-non-empty \
 	"$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
 	umount "$OVLROOT_INIT_ROOTMNT"
-	mount -o remount,$root_mode "$ovl_lower_dir"
+
+	if [ "$root_mode" = "rw" -a "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+		mount -o remount,$root_mode "$ovl_lower_dir"
+	fi
+
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
@@ -205,7 +220,10 @@ while IFS= read -r line; do
 	modified=n
 
 	if [ "$dir" = "/" ]; then
-		opts="$(opts_add_replace "$opts" "ro" "rw")"
+		if [ "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+			opts="$(opts_add_replace "$opts" "ro" "rw")"
+		fi
+
 		dir="$ovl_lower_dir"
 		modified=y
 	fi
@@ -213,7 +231,10 @@ while IFS= read -r line; do
 	if [ "$modified" = "n" -a "x$OVLROOT_OVERLAY" != "x" ]; then
 		for _dir in $(echo "$OVLROOT_OVERLAY" | sed "s/,/ /g"); do
 			if [ "$_dir" = "$dir" ]; then
-				opts="$(opts_add_replace "$opts" "ro" "rw")"
+				if [ "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+					opts="$(opts_add_replace "$opts" "ro" "rw")"
+				fi
+
 				opts="ovlroot_realfs=$type,$opts"
 				type="ovlroot"
 				modified=y
@@ -232,11 +253,20 @@ while IFS= read -r line; do
 		done
 	fi
 
+	if [ "$modified" = "n" -a "x$OVLROOT_DISABLE" != "x" ]; then
+		for _dir in $(echo "$OVLROOT_DISABLE" | sed "s/,/ /g"); do
+			if [ "$_dir" = "$dir" ]; then
+				line="# $line"
+				break
+			fi
+		done
+	fi
+
 	if [ "$modified" = "y" ]; then
 		printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
 			   "$fs" "$dir" "$type" "$opts" "${dump:=0}" "${pass:=0}"
 	else
-		echo $line
+		echo "$line"
 	fi
 done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
@@ -244,7 +274,11 @@ if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
 	mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
 	rmdir --ignore-fail-on-non-empty "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
 	umount "$OVLROOT_INIT_ROOTMNT"
-	mount -o remount,$root_mode "$ovl_lower_dir"
+
+	if [ "$root_mode" = "rw" -a "x$OVLROOT_LOWER_RDONLY" = "xyes" ]; then
+		mount -o remount,$root_mode "$ovl_lower_dir"
+	fi
+
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
 	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
