@@ -13,6 +13,7 @@ OVLROOT_FSTAB="/etc/fstab"
 OVLROOT_NEW_FSTAB="/tmp/new_fstab"
 OVLROOT_LOWER_MODE="ro"
 OVLROOT_OVL_OPTS_ROOT=""
+OVLROOT_ROOT_MNTOPTS="n"
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
@@ -197,10 +198,8 @@ while IFS= read -r line; do
 	modified=n
 
 	if [ "$dir" = "/" ]; then
-		if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
-			root_opts="$(opts_add_replace "$opts" "ro" "rw")"
-		else
-			root_opts="$(opts_add_replace "$opts" "rw" "ro")"
+		if [ "x$OVLROOT_ROOT_MNTOPTS" = "xy" ]; then
+			root_opts="$opts"
 		fi
 
 		continue
@@ -250,19 +249,29 @@ while IFS= read -r line; do
 	fi
 done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
-if ! mount -o "remount,$root_opts" "$ovl_lower_dir"; then
-	mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
-	rmdir --ignore-fail-on-non-empty "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
-	umount "$OVLROOT_INIT_ROOTMNT"
-	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
-	rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
-	rmdir --ignore-fail-on-non-empty "$ovl_work_dir/rootfs"
-	rmdir --ignore-fail-on-non-empty "$ovl_work_dir"
-	rmdir --ignore-fail-on-non-empty "$ovl_lower_dir"
-	umount "$OVLROOT_BASE_DIR"
-	rmdir --ignore-fail-on-non-empty "$OVLROOT_BASE_DIR"
-	exit 1
+if [ "$root_mode" != "$OVLROOT_LOWER_MODE" ]; then
+	if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
+		root_opts="$(opts_add_replace "$root_opts" "ro" "rw")"
+	else
+		root_opts="$(opts_add_replace "$root_opts" "rw" "ro")"
+	fi
+fi
+
+if [ "x$root_opts" != "x" ]; then
+	if ! mount -o "remount,$root_opts" "$ovl_lower_dir"; then
+		mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
+		rmdir --ignore-fail-on-non-empty "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
+		umount "$OVLROOT_INIT_ROOTMNT"
+		mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
+		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir/rootfs"
+		rmdir --ignore-fail-on-non-empty "$ovl_upper_dir"
+		rmdir --ignore-fail-on-non-empty "$ovl_work_dir/rootfs"
+		rmdir --ignore-fail-on-non-empty "$ovl_work_dir"
+		rmdir --ignore-fail-on-non-empty "$ovl_lower_dir"
+		umount "$OVLROOT_BASE_DIR"
+		rmdir --ignore-fail-on-non-empty "$OVLROOT_BASE_DIR"
+		exit 1
+	fi
 fi
 
 if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
