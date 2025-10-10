@@ -54,5 +54,18 @@ write access is not needed and you want to protect it against changes.
 	  (default value: `/etc/fstab`)
 	- `OVLROOT_NEW_FSTAB=/<path>/<to>/<fstab>` absolute path where new fstab is
 	  created (default value: `/tmp/new_fstab`)
-	- `OVLROOT_LOWER_MODE=<mode>` 
+	- `OVLROOT_LOWER_MODE=<mode>` lower mounts are either `rw` (read-write) or
+	  `ro` (read-only) (default value: `ro`)
+	- `OVLROOT_OVL_OPTS_ROOT=<opt>,...` options added to the mount options of
+	  the root overlay mount
+	- `OVLROOT_ROOT_FSTAB_OPTS=<value>` the root filesystem is remounted with
+	  the options listed in the system's fstab, ether `y` for yes or `n` for no
+	  (default value: `n`)
+	- `OVLROOT_OVERLAY=<mountpoint>,...` list of mountpoints for which further
+	  overlays are created
+	- `OVLROOT_RDONLY=<mountpoint>,...` list of mountpoints that are mounted
+	  read-only
+    - `OVLROOT_DISABLE=<mountpoint>,...` list of mountpoints that are disabled
+	- `OVLROOT_SWAP=<value>` disables (`off`) or enables (`on`) swap
+	  (default value: `on`)
 

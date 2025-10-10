@@ -17,7 +17,7 @@ OVLROOT_ROOT_FSTAB_OPTS="n"
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
-OVLROOT_SWAP=""
+OVLROOT_SWAP="on"
 
 opts_add_replace() {
 	local opts="$1" opt1="$2" opt2="$3"
