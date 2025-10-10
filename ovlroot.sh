@@ -53,6 +53,7 @@ ovl_upper_dir=""
 ovl_work_dir=""
 root_mode="ro"
 root_opts=""
+ovlopts=""
 fs=""
 dir="" 
 type=""
@@ -71,9 +72,14 @@ for opt in $(cat /proc/cmdline); do
 	esac
 done
 
-[ "x$OVLROOT_BASE_DIR" = "x" ] && exit 1
-[ "x$OVLROOT_LOWER_DIR" = "x" -o "x$OVLROOT_UPPER_DIR" = "x" -o\
-  "x$OVLROOT_WORK_DIR" = "x" ] && exit 1
+[ "x$OVLROOT_INIT_ROOTMNT" = "x" ] && exit 1
+[ "x$OVLROOT_CFGDIR" = "x" ]       && exit 1
+[ "x$OVLROOT_FSTAB" = "x" ]        && exit 1
+[ "x$OVLROOT_NEW_FSTAB" = "x" ]    && exit 1
+[ "x$OVLROOT_BASE_DIR" = "x" ]     && exit 1
+[ "x$OVLROOT_LOWER_DIR" = "x" -o \
+  "x$OVLROOT_UPPER_DIR" = "x" -o \
+  "x$OVLROOT_WORK_DIR" = "x" ]     && exit 1
 
 if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 	OVLROOT_LOWER_MODE="ro"
