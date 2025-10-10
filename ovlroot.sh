@@ -13,7 +13,7 @@ OVLROOT_FSTAB="/etc/fstab"
 OVLROOT_NEW_FSTAB="/tmp/new_fstab"
 OVLROOT_LOWER_MODE="ro"
 OVLROOT_OVL_OPTS_ROOT=""
-OVLROOT_ROOT_MNTOPTS="n"
+OVLROOT_ROOT_FSTAB_OPTS="n"
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
@@ -80,6 +80,8 @@ done
 [ "x$OVLROOT_LOWER_DIR" = "x" -o \
   "x$OVLROOT_UPPER_DIR" = "x" -o \
   "x$OVLROOT_WORK_DIR" = "x" ]     && exit 1
+[ "x$OVLROOT_BASE_TYPE" = "x" -a \
+  "x$OVLROOT_BASE_DEV" = "x" ]     && exit 1
 
 if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 	OVLROOT_LOWER_MODE="ro"
@@ -88,8 +90,6 @@ fi
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
-
-[ "x$OVLROOT_BASE_TYPE" = "x" -a "x$OVLROOT_BASE_DEV" = "x" ] && exit 1
 
 mkdir -p "$OVLROOT_BASE_DIR" || exit 1
 
@@ -204,7 +204,7 @@ while IFS= read -r line; do
 	modified=n
 
 	if [ "$dir" = "/" ]; then
-		if [ "x$OVLROOT_ROOT_MNTOPTS" = "xy" ]; then
+		if [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" ]; then
 			root_opts="$opts"
 		fi
 
