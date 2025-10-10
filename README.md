@@ -1,0 +1,58 @@
+# archlinux-ovlroot
+With _ovlroot_ you can overlay your root filesystem with a temporary tmpfs
+filesystem to mount it read-only afterwards. Any changes are written to the
+tmpfs filesystem (which resides in memory), so that these changes are discarded
+on reboot or a loss of power does not threaten the integrity of the system's 
+root filesystem. Additionally you can configure further filesystems that you
+want either overlayed by a tmpfs filesystem, too or mounted read-only because
+write access is not needed and you want to protect it against changes.
+
+## 1. Installation
+
+### 1.1 Building Package
+- change your current working directory to the directory containing the files
+  of the repository
+- run `makepkg`
+
+#### 1.2 Install Package
+- build or download package
+- run `pacman -U /<path>/<to>/ovlroot-<version>-any.pkg.tar.zst`
+
+## 2. Configuration
+
+### 2.1 Initramfs
+- add `overlay` to __MODULES__ array in mkinitcpio.conf (in case support for
+  OverlayFS is not statically compiled into your kernel)
+- add `ovlroot` to the end of __HOOKS__ array in mkinitcpio.conf
+- update initramfs with `mkinitcpio -P`
+
+### 2.2 Kernel Command Line
+- add `ovlroot` to your kernel command line
+- optional:
+	- add the name of your configuration file like this `ovlroot=config.conf`
+
+### 2.3 Configuration File
+- directory for configuration files is `/etc/ovlroot.d`
+- configuration files can contain the following options:
+	- `OVLROOT_INIT_ROOTMNT=/<path>/<to>/<rootfs>` absolute path of the mountpoint
+	  of the root filesystem during initramfs stage (default value: `/new_root`)
+	- `OVLROOT_BASE_TYPE=<fstype>` type of underlying filesystem
+	  (default value: `tmpfs`)
+    - `OVLROOT_BASE_OPTS=<opt>,...` options to add to the mount of the underlying
+	  filesystem either `tmpfs` or an other filesystem, e. g. block-based
+	- `OVLROOT_BASE_DEV=<dev>` source device for underlying filesystem, e. g.
+	  `tmpfs` or a block device (default value: `tmpfs`)
+	- `OVLROOT_BASE_DIR=/<path>/<to>/<mountpoint>` absolute path of the mountpoint
+	  for underlying filesystem (default value: `/.ovlroot`)
+	- `OVLROOT_LOWER_DIR=<dirname>` relative path of the subdirectory of all
+	  lower filesystem mounts (default value: `lowerdir`)
+	- `OVLROOT_UPPER_DIR=<dirname>` relative path of the subdirectory for all
+	  changes made to the filesystems (default value: `upperdir`)
+	- `OVLROOT_WORK_DIR=<dirname>` relative path of the subdirectory needed by
+	  OverlayFS
+	- `OVLROOT_FSTAB=/<path>/<to>/<fstab>` absolute path to system fstab
+	  (default value: `/etc/fstab`)
+	- `OVLROOT_NEW_FSTAB=/<path>/<to>/<fstab>` absolute path where new fstab is
+	  created (default value: `/tmp/new_fstab`)
+	- `OVLROOT_LOWER_MODE=<mode>` 
+
