@@ -29,7 +29,7 @@ write access is not needed and you want to protect it against changes.
 ### 2.2 Kernel Command Line
 - add `ovlroot` to your kernel command line
 - optional:
-	- add the name of your configuration file like this `ovlroot=config.conf`
+	- add the name of your configuration file like this `ovlroot=<config>.conf`
 
 ### 2.3 Configuration File
 - directory for configuration files is `/etc/ovlroot.d`
