@@ -16,7 +16,7 @@
 # Maintainer: Tim Hildering <hilderingt@posteo.net>
 
 pkgname=archlinux-ovlroot
-pkgver=1.0.0
+pkgver=0.9.0
 pkgrel=1
 pkgdesc="Overlay the root filesystem with a tmpfs filesystem."
 arch=('any')
