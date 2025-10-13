@@ -279,7 +279,7 @@ if [ "$root_mode" != "$OVLROOT_LOWER_MODE" ]; then
 fi
 
 if [ "x$root_opts" != "x" ]; then
-	if ! mount -o "remount,$root_opts" "$ovl_lower_dir"; then
+	if ! mount -o "remount,$root_opts" "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
 		mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
 		rmdir --ignore-fail-on-non-empty "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
 		umount "$OVLROOT_INIT_ROOTMNT"
