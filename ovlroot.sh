@@ -317,8 +317,7 @@ if [ "x$root_fstab_opts" != "x" ]; then
 fi
 
 if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
-	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_init_opts" != "x" -a
-	       "x$root_fstab_opts" != "x" ]; then
+	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_fstab_opts" != "x" ]; then
 		mount -o "remount,$root_init_opts" "$ovl_lower_dir"
 	elif [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
 		mount -o "remount,$root_init_mode" "$ovl_lower_dir"
