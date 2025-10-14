@@ -39,7 +39,7 @@ opts_add_replace() {
 	local avail=n ret=
 
 	for opt in $(echo "$opts" | sed "s/,/ /g"); do
-		if [ "$opt" = "$opt2" -o  "$opt" = "$opt1"  ]; then
+		if [ "x$opt" = "x$opt2" -o  "x$opt" = "x$opt1"  ]; then
 			if [ "$avail" = "n" ]; then
 				ret="${ret:+${ret},}${opt1}"
 			fi
@@ -66,7 +66,7 @@ fi
 ovl_lower_dir=""
 ovl_upper_dir=""
 ovl_work_dir=""
-root_init_mode="ro"
+root_init_mode=""
 root_init_opts=""
 root_fstab_opts=""
 ovlopts=""
@@ -109,12 +109,18 @@ if [ "x$root_init_opts" != "x" ]; then
 				root_init_mode="$opt" ;;
 		esac
 	done
-else
+fi
+
+if [ "x$root_init_mode" = "x" ]; then
+	root_init_mode="ro"
+
 	for opt in $(cat "/proc/cmdline"); do
 		if [ "$opt" = "rw" ]; then
-				root_init_mode="rw"
+			root_init_mode="rw"
 		fi
 	done
+
+	root_init_opts="$(opts_add_replace "$root_init_opts" "$root_init_mode")"
 fi
 
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
@@ -311,7 +317,8 @@ if [ "x$root_fstab_opts" != "x" ]; then
 fi
 
 if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
-	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_init_opts" != "x" ]; then
+	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_init_opts" != "x" -a
+	       "x$root_fstab_opts" != "x" ]; then
 		mount -o "remount,$root_init_opts" "$ovl_lower_dir"
 	elif [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
 		mount -o "remount,$root_init_mode" "$ovl_lower_dir"
