@@ -97,7 +97,7 @@ if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 fi
 
 while read -r fs dir type opts dump pass; do
-	if [ "$dir" = "/" ]; then
+	if [ "$dir" = "$OVLROOT_INIT_ROOTMNT" ]; then
 		root_init_opts="$opts";
 	fi
 done <"/proc/mounts"
