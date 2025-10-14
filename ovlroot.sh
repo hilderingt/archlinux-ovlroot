@@ -66,8 +66,8 @@ fi
 ovl_lower_dir=""
 ovl_upper_dir=""
 ovl_work_dir=""
-root_cur_mode="ro"
-root_cur_opts=""
+root_init_mode="ro"
+root_init_opts=""
 root_fstab_opts=""
 ovlopts=""
 fs=""
@@ -80,19 +80,6 @@ err=""
 line=""
 _line=""
 _dir=""
-
-while read -r fs dir type opts dump pass; do
-	if [ "$dir" = "/" ]; then
-		root_cur_opts="$opts";
-	fi
-done <"/proc/mounts"
-
-for opt in $(echo "$root_cur_opts" | sed 's/,/ /g'); do
-	case "$opt" in
-		ro | rw)
-			root_cur_mode="$opt" ;;
-	esac
-done
 
 [ "x$OVLROOT_INIT_ROOTMNT" = "x" ] && exit 1
 [ "x$OVLROOT_CFGDIR" = "x" ]       && exit 1
@@ -107,6 +94,27 @@ done
 
 if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 	OVLROOT_LOWER_MODE="ro"
+fi
+
+while read -r fs dir type opts dump pass; do
+	if [ "$dir" = "/" ]; then
+		root_init_opts="$opts";
+	fi
+done <"/proc/mounts"
+
+if [ "x$root_init_opts" != "x" ]; then
+	for opt in $(echo "$root_init_opts" | sed 's/,/ /g'); do
+		case "$opt" in
+			ro | rw)
+				root_init_mode="$opt" ;;
+		esac
+	done
+else
+	for opt in $(cat "/proc/cmdline"); do
+		if [ "$opt" = "rw" ]; then
+				root_init_mode="rw"
+		fi
+	done
 fi
 
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
@@ -277,7 +285,7 @@ while IFS= read -r line; do
 	fi
 done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
-if [ "$root_cur_mode" != "$OVLROOT_LOWER_MODE" ]; then
+if [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
 	if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
 		root_fstab_opts="$(opts_add_replace "$root_fstab_opts" "ro" "rw")"
 	else
@@ -303,10 +311,10 @@ if [ "x$root_fstab_opts" != "x" ]; then
 fi
 
 if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
-	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" ]; then
-		mount -o "remount,$root_cur_opts" "$ovl_lower_dir"
-	elif [ "$root_cur_mode" != "$OVLROOT_LOWER_MODE" ]; then
-		mount -o "remount,$root_cur_mode" "$ovl_lower_dir"
+	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_init_opts" != "x" ]; then
+		mount -o "remount,$root_init_opts" "$ovl_lower_dir"
+	elif [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
+		mount -o "remount,$root_init_mode" "$ovl_lower_dir"
 	fi
 
 	mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
