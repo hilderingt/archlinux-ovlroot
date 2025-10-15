@@ -71,6 +71,7 @@ root_init_mode=""
 root_init_opts=""
 root_fstab_opts=""
 move_failed="n"
+modified="n"
 ovlopts=""
 fs=""
 dir="" 
@@ -325,7 +326,7 @@ if [ "x$root_fstab_opts" != "x" ]; then
 		rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
 		rmdir "$ovl_work_dir" 2>>/dev/null
 
-		if [ "x$move_failed" = "xy" ]; then
+		if [ "x$move_failed" = "xn" ]; then
 			umount "$OVLROOT_BASE_DIR" && \
 			rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 		fi
