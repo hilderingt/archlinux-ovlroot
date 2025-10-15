@@ -132,40 +132,40 @@ mkdir -p "$OVLROOT_BASE_DIR" || exit 1
 if ! mount ${OVLROOT_BASE_OPTS:+-o $OVLROOT_BASE_OPTS} \
 ${OVLROOT_BASE_TYPE:+-t $OVLROOT_BASE_TYPE} \
 ${OVLROOT_BASE_DEV:-$OVLROOT_BASE_TYPE} "$OVLROOT_BASE_DIR"; then
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mkdir -p "$ovl_lower_dir"; then
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mkdir -p "$ovl_upper_dir/rootfs"; then
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mkdir -p "$ovl_work_dir/rootfs"; then
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"; then
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_work_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_work_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
@@ -177,41 +177,41 @@ if ! mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
 "ovlroot" "$OVLROOT_INIT_ROOTMNT"; then
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_work_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_work_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mkdir -p "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
 	umount "$OVLROOT_INIT_ROOTMNT"
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_work_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_work_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
 if ! mount -o "move" "$OVLROOT_BASE_DIR" \
 "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
-	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
 	umount "$OVLROOT_INIT_ROOTMNT"
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_work_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_work_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
@@ -301,16 +301,16 @@ fi
 if [ "x$root_fstab_opts" != "x" ]; then
 	if ! mount -o "remount,$root_fstab_opts" "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
 		mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
-		rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>/dev/null
+		rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
 		umount "$OVLROOT_INIT_ROOTMNT"
 		mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-		rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-		rmdir "$ovl_upper_dir" 2>/dev/null
-		rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-		rmdir "$ovl_work_dir" 2>/dev/null
-		rmdir "$ovl_lower_dir" 2>/dev/null
+		rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+		rmdir "$ovl_upper_dir" 2>>/dev/null
+		rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+		rmdir "$ovl_work_dir" 2>>/dev/null
+		rmdir "$ovl_lower_dir" 2>>/dev/null
 		umount "$OVLROOT_BASE_DIR"
-		rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+		rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 		exit 1
 	fi
 fi
@@ -323,20 +323,20 @@ if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
 	fi
 
 	mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
 	umount "$OVLROOT_INIT_ROOTMNT"
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	rmdir "$ovl_upper_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_upper_dir" 2>/dev/null
-	rmdir "$ovl_work_dir/rootfs" 2>/dev/null
-	rmdir "$ovl_work_dir" 2>/dev/null
-	rmdir "$ovl_lower_dir" 2>/dev/null
+	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_upper_dir" 2>>/dev/null
+	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
+	rmdir "$ovl_work_dir" 2>>/dev/null
+	rmdir "$ovl_lower_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR"
-	rmdir "$OVLROOT_BASE_DIR" 2>/dev/null
+	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
 fi
 
-rmdir --ignore-fail-on-non-empty "$OVLROOT_BASE_DIR"
+rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 
 exit 0 
 
