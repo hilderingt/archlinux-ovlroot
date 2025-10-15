@@ -21,6 +21,7 @@ OVLROOT_BASE_TYPE="tmpfs"
 OVLROOT_BASE_OPTS=""
 OVLROOT_BASE_DEV=""
 OVLROOT_BASE_DIR="/.ovlroot"
+OVLROOT_BASE_CLEAN="n"
 OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
@@ -134,6 +135,10 @@ ${OVLROOT_BASE_TYPE:+-t $OVLROOT_BASE_TYPE} \
 ${OVLROOT_BASE_DEV:-$OVLROOT_BASE_TYPE} "$OVLROOT_BASE_DIR"; then
 	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 	exit 1
+fi
+
+if [ "x$OVLROOT_BASE_CLEAN" = "xy" ]; then
+	(cd "$OVLROOT_BASE_DIR"; rm -rf * .*)
 fi
 
 if ! mkdir -p "$ovl_lower_dir"; then

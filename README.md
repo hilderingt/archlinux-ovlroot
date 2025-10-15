@@ -29,7 +29,7 @@ write access is not needed and you want to protect it against changes.
 ### 2.2 Kernel Command Line
 - add `ovlroot` to your kernel command line
 - optional:
-	- add the name of your configuration file like this `ovlroot=<config>.conf`
+	- add the name of your configuration file like this `ovlroot=<config>`
 
 ### 2.3 Configuration File
 - directory for configuration files is `/etc/ovlroot.d`
@@ -45,6 +45,9 @@ write access is not needed and you want to protect it against changes.
 	  `tmpfs` or a block device (default value: `tmpfs`)
 	- `OVLROOT_BASE_DIR=/<path>/<to>/<mountpoint>` absolute path of the mountpoint
 	  for underlying filesystem (default value: `/.ovlroot`)
+	- `OVLROOT_BASE_CLEAN=<value>` when the base filesystem is for example a
+	  block device, any remaining data is erased when value is `ỳ` or not when
+	  value is `n` (default value: `n`)
 	- `OVLROOT_LOWER_DIR=<dirname>` relative path of the subdirectory of all
 	  lower filesystem mounts (default value: `lowerdir`)
 	- `OVLROOT_UPPER_DIR=<dirname>` relative path of the subdirectory for all
@@ -59,6 +62,8 @@ write access is not needed and you want to protect it against changes.
 	  `ro` (read-only) (default value: `ro`)
 	- `OVLROOT_OVL_OPTS_ROOT=<opt>,...` options added to the mount options of
 	  the root overlay mount
+	- `OVLROOT_OVL_OPTS_OTHER=<opt>,...` options added to the mount options of
+	  the overlay mounts given in `OVLROOT_OVERLAY`
 	- `OVLROOT_ROOT_FSTAB_OPTS=<value>` the root filesystem is remounted with
 	  the options listed in the system's fstab, ether `y` for yes or `n` for no
 	  (default value: `n`)
