@@ -225,7 +225,7 @@ while IFS= read -r line; do
 	END
 
 	[ "x$opts"  = "x" ] && { echo "$line"; continue; }
-	[ "x$err"  != "x" -o "x$opts"  = "x" ] && return 1
+	[ "x$err"  != "x" -o "x$opts"  = "x" ] && { echo "$line"; continue; }
 
 	if [ "$type" = "swap" ]; then
 		if [ "x$OVLROOT_SWAP" = "xoff" ]; then			
