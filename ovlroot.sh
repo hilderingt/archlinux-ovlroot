@@ -70,6 +70,7 @@ ovl_work_dir=""
 root_init_mode=""
 root_init_opts=""
 root_fstab_opts=""
+move_failed="n"
 ovlopts=""
 fs=""
 dir="" 
@@ -208,7 +209,7 @@ fi
 if ! mount -o "move" "$OVLROOT_BASE_DIR" \
 "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
 	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-	umount "$OVLROOT_INIT_ROOTMNT" && \
+	umount "$OVLROOT_INIT_ROOTMNT"
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
 	rmdir "$ovl_lower_dir" 2>>/dev/null
 	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
@@ -217,6 +218,8 @@ if ! mount -o "move" "$OVLROOT_BASE_DIR" \
 	rmdir "$ovl_work_dir" 2>>/dev/null
 	umount "$OVLROOT_BASE_DIR" && \
 	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+	fi
+
 	exit 1
 fi
 
@@ -304,17 +307,29 @@ fi
 
 if [ "x$root_fstab_opts" != "x" ]; then
 	if ! mount -o "remount,$root_fstab_opts" "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
-		mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR" && \
-		rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-		umount "$OVLROOT_INIT_ROOTMNT" && \
+		if ! mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
+	         "$OVLROOT_BASE_DIR"; then
+			ovl_lower_dir="$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"
+			ovl_upper_dir="$OVLROOT_INIT_ROOTMNT/$ovl_upper_dir"
+			ovl_work_dir="$OVLROOT_INIT_ROOTMNT/$ovl_work_dir"
+			move_failed="y"
+		else
+			rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
+			umount "$OVLROOT_INIT_ROOTMNT"
+		fi
+
 		mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
 		rmdir "$ovl_lower_dir" 2>>/dev/null
 		rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
 		rmdir "$ovl_upper_dir" 2>>/dev/null
 		rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
 		rmdir "$ovl_work_dir" 2>>/dev/null
-		umount "$OVLROOT_BASE_DIR" && \
-		rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+
+		if [ "x$move_failed" = "xy" ]; then
+			umount "$OVLROOT_BASE_DIR" && \
+			rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+		fi
+
 		exit 1
 	fi
 fi
@@ -326,21 +341,32 @@ if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
 		mount -o "remount,$root_init_mode" "$ovl_lower_dir"
 	fi
 
-	mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" "$OVLROOT_BASE_DIR" && \
-	rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-	umount "$OVLROOT_INIT_ROOTMNT" && \
+	if ! mount -o move "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
+	     "$OVLROOT_BASE_DIR"; then
+		ovl_lower_dir="$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"
+		ovl_upper_dir="$OVLROOT_INIT_ROOTMNT/$ovl_upper_dir"
+		ovl_work_dir="$OVLROOT_INIT_ROOTMNT/$ovl_work_dir"
+		move_failed="y"
+	else
+		rmdir "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
+		umount "$OVLROOT_INIT_ROOTMNT"
+	fi
+
 	mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
 	rmdir "$ovl_lower_dir" 2>>/dev/null
 	rmdir "$ovl_upper_dir/rootfs" 2>>/dev/null && \
 	rmdir "$ovl_upper_dir" 2>>/dev/null
 	rmdir "$ovl_work_dir/rootfs" 2>>/dev/null && \
 	rmdir "$ovl_work_dir" 2>>/dev/null
-	umount "$OVLROOT_BASE_DIR" && \
-	rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+
+	if [ "x$move_failed" = "xy" ]; then
+		umount "$OVLROOT_BASE_DIR" && \
+		rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+	fi
+
 	exit 1
 fi
 
 rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
 
 exit 0 
-
