@@ -30,6 +30,7 @@ OVLROOT_NEW_FSTAB="/tmp/new_fstab"
 OVLROOT_LOWER_MODE="ro"
 OVLROOT_OVL_OPTS_ROOT=""
 OVLROOT_ROOT_FSTAB_OPTS="n"
+OVLROOT_LIST_SEP=","
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
@@ -39,7 +40,10 @@ opts_add_replace() {
 	local opts="$1" opt1="$2" opt2="$3"
 	local avail=n ret=
 
-	for opt in $(echo "$opts" | sed "s/,/ /g"); do
+	oldIFS="$IFS"
+	IFS=","
+
+	for opt in $opts; do
 		if [ "x$opt" = "x$opt2" -o  "x$opt" = "x$opt1"  ]; then
 			if [ "$avail" = "n" ]; then
 				ret="${ret:+${ret},}${opt1}"
@@ -50,6 +54,8 @@ opts_add_replace() {
 			ret="${ret:+${ret},}${opt}"
 		fi
 	done
+
+	IFS="$oldIFS"
 
 	[ "$avail" = "n" ] && ret="${opts:+${opts},}$opt1"
 
@@ -93,24 +99,34 @@ _dir=""
   "x$OVLROOT_WORK_DIR" = "x" ]     && exit 1
 [ "x$OVLROOT_BASE_TYPE" = "x" -a \
   "x$OVLROOT_BASE_DEV" = "x" ]     && exit 1
+[ "x$OVLROOT_LIST_SEP" = "x" ]     && OVLROOT_LIST_SEP=","
 
 if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 	OVLROOT_LOWER_MODE="ro"
 fi
 
-while read -r fs dir type opts dump pass; do
+while read -r fs dir type opts dump pass err; do
+	[ "x$err"  != "x" -o "x$opts" = "x" ] && continue
+
+	dir=$(printf "%s" "$dir" | sed 's/\\040/ /g')
+
 	if [ "$dir" = "$OVLROOT_INIT_ROOTMNT" ]; then
 		root_init_opts="$opts";
 	fi
 done <"/proc/mounts"
 
 if [ "x$root_init_opts" != "x" ]; then
-	for opt in $(echo "$root_init_opts" | sed 's/,/ /g'); do
+	oldIFS="$IFS"
+	IFS=","
+
+	for opt in $root_init_opts; do
 		case "$opt" in
 			ro | rw)
 				root_init_mode="$opt" ;;
 		esac
 	done
+
+	IFS="oldIFS"
 fi
 
 if [ "x$root_init_mode" = "x" ]; then
@@ -246,6 +262,8 @@ while IFS= read -r line; do
 
 	[ "x$err"  != "x" -o "x$opts" = "x" ] && { echo "$line"; continue; }
 
+	dir=$(printf "%s" "$dir" | sed 's/\\040/ /g')
+
 	if [ "$type" = "swap" ]; then
 		if [ "x$OVLROOT_SWAP" = "xoff" ]; then			
 			printf "# "
@@ -266,7 +284,10 @@ while IFS= read -r line; do
 	fi
 
 	if [ "$modified" = "n" -a "x$OVLROOT_OVERLAY" != "x" ]; then
-		for _dir in $(echo "$OVLROOT_OVERLAY" | sed "s/,/ /g"); do
+		oldIFS="$IFS"
+		IFS="$OVLROOT_LIST_SEP"
+
+		for _dir in $OVLROOT_OVERLAY; do
 			if [ "$_dir" = "$dir" ]; then
 				if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
 					opts="$(opts_add_replace "$opts" "ro" "rw")"
@@ -280,26 +301,40 @@ while IFS= read -r line; do
 				break
 			fi
 		done
+
+		IFS="$oldIFS"
 	fi
 
 	if [ "$modified" = "n" -a "x$OVLROOT_RDONLY" != "x" ]; then
-		for _dir in $(echo "$OVLROOT_RDONLY" | sed "s/,/ /g"); do
+		oldIFS="$IFS"
+		IFS="$OVLROOT_LIST_SEP"
+
+		for _dir in $OVLROOT_RDONLY; do
 			if [ "$_dir" = "$dir" ]; then
 				opts="$(opts_add_replace "$opts" "ro" "rw")"
 				modified=y
 				break
 			fi
 		done
+
+		IFS="$oldIFS"
 	fi
 
 	if [ "$modified" = "n" -a "x$OVLROOT_DISABLE" != "x" ]; then
-		for _dir in $(echo "$OVLROOT_DISABLE" | sed "s/,/ /g"); do
+		oldIFS="$IFS"
+		IFS="$OVLROOT_LIST_SEP"
+
+		for _dir in $OVLROOT_DISABLE; do
 			if [ "$_dir" = "$dir" ]; then
 				line="# $line"
 				break
 			fi
 		done
+
+		IFS="$oldIFS"
 	fi
+
+	dir=$(printf "%s" "$dir" | sed 's/ /\\040/g')
 
 	if [ "$modified" = "y" ]; then
 		printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
