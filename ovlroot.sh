@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+trap rollback EXIT INT TERM
+
 OVLROOT_INIT_ROOTMNT="/new_root"
 OVLROOT_CFGDIR="/etc/ovlroot.d"
 OVLROOT_BASE_TYPE="tmpfs"
@@ -65,6 +67,44 @@ opts_add_replace() {
 	printf "%s" "$ret"
 }
 
+shell_quote() {
+	arg="$1"
+
+	printf "%s" "'$(printf "%s" "$arg" | sed "s/'/'\"'\"'/g")'"
+}
+
+push_undo_cmd() {
+	[ -n "$OVLROOT_JOURNAL" ] || return 0
+	cmd="$1"; shift || true
+
+	line="$cmd"
+	for arg in "$@"; do
+		quoted=$(shell_quote "$arg")
+		line="$line $quoted"
+	done
+
+	printf "%s\n" "$line" >>"$OVLROOT_JOURNAL"
+}
+
+rollback() {
+	rc=$?
+
+	trap '' EXIT INT TERM
+
+	if [ -f "$OVLROOT_JOURNAL" ]; then
+		awk ' {lines[NR]=$0} END{for(i=NR;i>=1;i--) print lines[i] }' "$OVLROOT_JOURNAL" |
+		while IFS= read -r cmdline; do
+			sh -c "$cmdline" 2>/dev/null || true
+		done
+		rm -f -- "$OVLROOT_JOURNAL" 2>/dev/null || true
+	fi
+
+	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
+	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null || true
+
+	exit "$rc"
+}
+
 if [ "x$1" != "x" ]; then
 	if [ -s "$OVLROOT_CFGDIR/$1.conf" ]; then
 		. "$OVLROOT_CFGDIR/$1.conf"
@@ -108,7 +148,14 @@ if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 	OVLROOT_LOWER_MODE="ro"
 fi
 
-while read -r fs dir type opts dump pass; do
+while IFS= read -r line; do
+s	et -f
+	set -- $_line
+
+	fs="$1"; dir="$2"; type="$3"; opts="$4"; dump="$5"; pass="$6"
+
+	set +f
+
 	dir=$(printf "%s" "$dir" | sed 's/\\040/ /g')
 
 	if [ "$dir" = "$OVLROOT_INIT_ROOTMNT" ]; then
@@ -148,17 +195,9 @@ ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
 mkdir -p -- "$OVLROOT_BASE_DIR" || exit 1
 
-if [ "x$OVLROOT_BASE_OPTS" != "x" ]; then
-	OVLROOT_BASE_OPTS="-o $OVLROOT_BASE_OPTS"
-fi
-
-if [ "x$OVLROOT_BASE_TYPE" != "x" ]; then
-	OVLROOT_BASE_TYPE="-t $OVLROOT_BASE_TYPE"
-fi
-
-if [ "x$OVLROOT_BASE_DEV" = "x" ]; then
-	OVLROOT_BASE_DEV="$OVLROOT_BASE_TYPE"
-fi
+[ "x$OVLROOT_BASE_OPTS" != "x" ] && OVLROOT_BASE_OPTS="-o $OVLROOT_BASE_OPTS"
+[ "x$OVLROOT_BASE_TYPE" != "x" ] && OVLROOT_BASE_TYPE="-t $OVLROOT_BASE_TYPE"
+[ "x$OVLROOT_BASE_DEV"   = "x" ] && OVLROOT_BASE_DEV="$OVLROOT_BASE_TYPE"
 
 if ! mount $OVLROOT_BASE_OPTS $OVLROOT_BASE_TYPE -- "$OVLROOT_BASE_DEV" \
      "$OVLROOT_BASE_DIR"; then
@@ -354,7 +393,7 @@ while IFS= read -r line; do
 
 	if [ "$modified" = "y" ]; then
 		printf "%s\t%s\t%s\t%s\t%s\t%s\n" \
-			   "$fs" "$dir" "$type" "$opts" "${dump:=0}" "${pass:=0}"
+			   "$fs" "$dir" "$type" "$opts" "${dump:-0}" "${pass:-0}"
 	else
 		echo "$line"
 	fi
