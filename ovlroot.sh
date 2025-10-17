@@ -28,11 +28,12 @@ OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
 OVLROOT_FSTAB="/etc/fstab"
-OVLROOT_NEW_FSTAB="/tmp/new_fstab"
+OVLROOT_NEW_FSTAB=""
 OVLROOT_LOWER_MODE="ro"
 OVLROOT_OVL_OPTS_ROOT=""
 OVLROOT_ROOT_FSTAB_OPTS="n"
 OVLROOT_LIST_SEP=","
+OVLROOT_JOURNAL=""
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""
 OVLROOT_RDONLY=""
@@ -49,7 +50,7 @@ opts_add_replace() {
 	IFS=","
 
 	for opt in $opts; do
-		if [ "x$opt" = "x$opt2" -o  "x$opt" = "x$opt1"  ]; then
+		if [ "x$opt" = "x$opt2" ] || [ "x$opt" = "x$opt1"  ]; then
 			if [ "$avail" = "n" ]; then
 				ret="${ret:+${ret},}${opt1}"
 			fi
@@ -92,15 +93,16 @@ rollback() {
 	trap '' EXIT INT TERM
 
 	if [ -f "$OVLROOT_JOURNAL" ]; then
-		awk ' {lines[NR]=$0} END{for(i=NR;i>=1;i--) print lines[i] }' "$OVLROOT_JOURNAL" |
+		awk '{lines[NR]=$0} END{for(i=NR;i>=1;i--) print lines[i] }' \
+		    "$OVLROOT_JOURNAL" |
 		while IFS= read -r cmdline; do
-			sh -c "$cmdline" 2>/dev/null || true
+			sh -c "$cmdline" 2>/dev/null
 		done
-		rm -f -- "$OVLROOT_JOURNAL" 2>/dev/null || true
+		rm -f -- "$OVLROOT_JOURNAL" 2>/dev/null
 	fi
 
 	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
-	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null || true
+	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null
 
 	exit "$rc"
 }
@@ -118,7 +120,7 @@ ovl_upper_dir=""
 ovl_work_dir=""
 root_init_mode=""
 root_init_opts=""
-root_fstab_opts=""
+root_new_opts=""
 modified="n"
 ovlopts=""
 fs=""
@@ -135,13 +137,12 @@ _dir=""
 [ "x$OVLROOT_INIT_ROOTMNT" = "x" ] && exit 1
 [ "x$OVLROOT_CFGDIR" = "x" ]       && exit 1
 [ "x$OVLROOT_FSTAB" = "x" ]        && exit 1
-[ "x$OVLROOT_NEW_FSTAB" = "x" ]    && exit 1
 [ "x$OVLROOT_BASE_DIR" = "x" ]     && exit 1
-[ "x$OVLROOT_LOWER_DIR" = "x" -o \
-  "x$OVLROOT_UPPER_DIR" = "x" -o \
-  "x$OVLROOT_WORK_DIR" = "x" ]     && exit 1
-[ "x$OVLROOT_BASE_TYPE" = "x" -a \
-  "x$OVLROOT_BASE_DEV" = "x" ]     && exit 1
+[ "x$OVLROOT_LOWER_DIR" = "x" ]    && \
+[ "x$OVLROOT_UPPER_DIR" = "x" ]    && \
+[  "x$OVLROOT_WORK_DIR" = "x" ]    && exit 1
+[ "x$OVLROOT_BASE_TYPE" = "x" ]    && \
+[ "x$OVLROOT_BASE_DEV" = "x" ]     && exit 1
 [ "x$OVLROOT_LIST_SEP" = "x" ]     && OVLROOT_LIST_SEP=","
 
 if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
@@ -149,8 +150,8 @@ if [ "x$OVLROOT_LOWER_MODE" != "xrw" -a "x$OVLROOT_LOWER_MODE" != "xro" ]; then
 fi
 
 while IFS= read -r line; do
-s	et -f
-	set -- $_line
+	set -f
+	set -- $line
 
 	fs="$1"; dir="$2"; type="$3"; opts="$4"; dump="$5"; pass="$6"
 
@@ -175,6 +176,7 @@ if [ "x$root_init_opts" != "x" ]; then
 	done
 
 	IFS="$oldIFS"
+	unset oldIFS
 fi
 
 if [ "x$root_init_mode" = "x" ]; then
@@ -189,63 +191,50 @@ if [ "x$root_init_mode" = "x" ]; then
 	root_init_opts="$(opts_add_replace "$root_init_opts" "$root_init_mode")"
 fi
 
+if [ "x$OVLROOT_NEW_FSTAB" = "x" ]; then
+
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
 mkdir -p -- "$OVLROOT_BASE_DIR" || exit 1
+push_undo_cmd rmdir -- "$OVLROOT_BASE_DIR"
 
+[ "x$OVLROOT_BASE_DEV"   = "x" ] && OVLROOT_BASE_DEV="$OVLROOT_BASE_TYPE"
 [ "x$OVLROOT_BASE_OPTS" != "x" ] && OVLROOT_BASE_OPTS="-o $OVLROOT_BASE_OPTS"
 [ "x$OVLROOT_BASE_TYPE" != "x" ] && OVLROOT_BASE_TYPE="-t $OVLROOT_BASE_TYPE"
-[ "x$OVLROOT_BASE_DEV"   = "x" ] && OVLROOT_BASE_DEV="$OVLROOT_BASE_TYPE"
 
 if ! mount $OVLROOT_BASE_OPTS $OVLROOT_BASE_TYPE -- "$OVLROOT_BASE_DEV" \
      "$OVLROOT_BASE_DIR"; then
-	rmdir -- "x$OVLROOT_BASE_DIR"
-
 	exit 1
 fi
+push_undo_cmd umount -- "$OVLROOT_BASE_DIR"
 
 if [ "x$OVLROOT_BASE_CLEAN" = "xy" ]; then
 	(cd "$OVLROOT_BASE_DIR"; find . -mindepth 1 -exec rm -rf '{}' +)
 fi
 
 if ! mkdir -p -- "$ovl_lower_dir"; then
-	umount -- "$OVLROOT_BASE_DIR" && \
-	rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-
 	exit 1
 fi
+push_undo_cmd rmdir -- "$ovl_lower_dir"
 
-if ! mkdir -p --"$ovl_upper_dir/rootfs"; then
-	rmdir -- "$ovl_lower_dir" 2>>/dev/null
-	umount -- "$OVLROOT_BASE_DIR" && \
-	rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-
+if ! mkdir -p -- "$ovl_upper_dir/rootfs"; then
 	exit 1
 fi
+push_undo_cmd rmdir -- "$ovl_upper_dir/rootfs"
+push_undo_cmd rmdir -- "$ovl_upper_dir"
 
 if ! mkdir -p -- "$ovl_work_dir/rootfs"; then
-	rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-	rmdir -- "$ovl_upper_dir" 2>>/dev/null
-	rmdir --"$ovl_lower_dir" 2>>/dev/null
-	umount -- "$OVLROOT_BASE_DIR" && \
-	rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-
 	exit 1
 fi
+push_undo_cmd rmdir -- "$ovl_work_dir/rootfs"
+push_undo_cmd rmdir -- "$ovl_work_dir"
 
 if ! mount -o "move" -- "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"; then
-	rmdir -- "$ovl_lower_dir" 2>>/dev/null
-	rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-	rmdir -- "$ovl_upper_dir" 2>>/dev/null
-	rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-	rmdir -- "$ovl_work_dir" 2>>/dev/null
-	umount -- "$OVLROOT_BASE_DIR" && \
-	rmdir --  "$OVLROOT_BASE_DIR" 2>>/dev/null
-
 	exit 1
 fi
+push_undo_cmd mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
 
 if [ "x$OVLROOT_OVL_OPTS_ROOT" != "x" ]; then
 	ovlopts="${OVLROOT_OVL_OPTS_ROOT},"
@@ -254,54 +243,21 @@ fi
 if ! mount -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/rootfs,workdir=$ovl_work_dir/rootfs" \
 "ovlroot" -- "$OVLROOT_INIT_ROOTMNT"; then
-	mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
-	rmdir -- "$ovl_lower_dir" 2>>/dev/null
-	rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-	rmdir -- "$ovl_upper_dir" 2>>/dev/null
-	rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-	rmdir -- "$ovl_work_dir" 2>>/dev/null
-	umount -- "$OVLROOT_BASE_DIR" && \
-	rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-
 	exit 1
 fi
+push_undo_cmd umount -- "$OVLROOT_INIT_ROOTMNT"
 
 if ! mkdir -p -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
-	if umount -- "$OVLROOT_INIT_ROOTMNT"; then
-		mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
-		rmdir -- "$ovl_lower_dir" 2>>/dev/null
-		rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-		rmdir -- "$ovl_upper_dir" 2>>/dev/null
-		rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-		rmdir -- "$ovl_work_dir" 2>>/dev/null
-		umount -- "$OVLROOT_BASE_DIR" && \
-		rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-	else
-		mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	fi
-
 	exit 1
 fi
+push_undo_cmd rmdir -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"
 
 if ! mount -o "move" -- "$OVLROOT_BASE_DIR" \
 "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR"; then
-	rmdir -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-
-	if umount -- "$OVLROOT_INIT_ROOTMNT"; then
-		mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
-		rmdir -- "$ovl_lower_dir" 2>>/dev/null
-		rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-		rmdir -- "$ovl_upper_dir" 2>>/dev/null
-		rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-		rmdir -- "$ovl_work_dir" 2>>/dev/null
-		umount -- "$OVLROOT_BASE_DIR" && \
-		rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-	else
-		mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	fi
-
 	exit 1
 fi
+push_undo_cmd mount -o move -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
+"$OVLROOT_BASE_DIR"
 
 while IFS= read -r line; do
 	[ "x$line" = "x" ] && { echo ""; continue; }
@@ -315,7 +271,9 @@ while IFS= read -r line; do
 
 	set +f
 
-	[ "x$err"  != "x" -o "x$opts" = "x" ] && { echo "$line"; continue; }
+	if [ "x$err"  != "x" ] || [ "x$opts" = "x" ]; then
+		echo "$line"; continue
+	fi
 
 	dir=$(printf "%s" "$dir" | sed 's/\\040/ /g')
 
@@ -332,13 +290,13 @@ while IFS= read -r line; do
 
 	if [ "$dir" = "/" ]; then
 		if [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" ]; then
-			root_fstab_opts="$opts"
+			root_new_opts="$opts"
 		fi
 
 		continue
 	fi
 
-	if [ "$modified" = "n" -a "x$OVLROOT_OVERLAY" != "x" ]; then
+	if [ "$modified" = "n" ] && [ "x$OVLROOT_OVERLAY" != "x" ]; then
 		oldIFS="$IFS"
 		IFS="$OVLROOT_LIST_SEP"
 
@@ -358,9 +316,10 @@ while IFS= read -r line; do
 		done
 
 		IFS="$oldIFS"
+		unset oldIFS
 	fi
 
-	if [ "$modified" = "n" -a "x$OVLROOT_RDONLY" != "x" ]; then
+	if [ "$modified" = "n" ] && [ "x$OVLROOT_RDONLY" != "x" ]; then
 		oldIFS="$IFS"
 		IFS="$OVLROOT_LIST_SEP"
 
@@ -373,9 +332,10 @@ while IFS= read -r line; do
 		done
 
 		IFS="$oldIFS"
+		unset oldIFS
 	fi
 
-	if [ "$modified" = "n" -a "x$OVLROOT_DISABLE" != "x" ]; then
+	if [ "$modified" = "n" ] && [ "x$OVLROOT_DISABLE" != "x" ]; then
 		oldIFS="$IFS"
 		IFS="$OVLROOT_LIST_SEP"
 
@@ -387,6 +347,7 @@ while IFS= read -r line; do
 		done
 
 		IFS="$oldIFS"
+		unset oldIFS
 	fi
 
 	dir=$(printf "%s" "$dir" | sed 's/ /\\040/g')
@@ -401,64 +362,24 @@ done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
 
 if [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
 	if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
-		root_fstab_opts="$(opts_add_replace "$root_fstab_opts" "ro" "rw")"
+		root_new_opts="$(opts_add_replace "$root_new_opts" "ro" "rw")"
 	else
-		root_fstab_opts="$(opts_add_replace "$root_fstab_opts" "rw" "ro")"
+		root_new_opts="$(opts_add_replace "$root_new_opts" "rw" "ro")"
 	fi
 fi
 
-if [ "x$root_fstab_opts" != "x" ]; then
-	if ! mount -o "remount,$root_fstab_opts" -- "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
-		if mount -o move -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
-	       "$OVLROOT_BASE_DIR"; then
-			rmdir -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-
-			if umount -- "$OVLROOT_INIT_ROOTMNT"; then
-				mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
-				rmdir -- "$ovl_lower_dir" 2>>/dev/null
-				rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-				rmdir -- "$ovl_upper_dir" 2>>/dev/null
-				rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-				rmdir -- "$ovl_work_dir" 2>>/dev/null
-				umount -- "$OVLROOT_BASE_DIR" && \
-				rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-			fi
-		else
-			mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-		fi
-
+if [ "x$root_new_opts" != "x" ]; then
+	if ! mount -o "remount,$root_new_opts" -- "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
 		exit 1
 	fi
+	push_undo_cmd mount -o "remount,$root_init_opts" -- "$ovl_lower_dir"
 fi
 
-if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
-	if   [ "x$OVLROOT_ROOT_FSTAB_OPTS" = "xy" -a "x$root_fstab_opts" != "x" ]; then
-		mount -o "remount,$root_init_opts" -- "$ovl_lower_dir"
-	elif [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
-		mount -o "remount,$root_init_mode" -- "$ovl_lower_dir"
-	fi
-
-	if mount -o move -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" \
-	   "$OVLROOT_BASE_DIR"; then
-		rmdir -- "$OVLROOT_INIT_ROOTMNT/$OVLROOT_BASE_DIR" 2>>/dev/null
-
-		if umount -- "$OVLROOT_INIT_ROOTMNT"; then
-			mount -o move "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT" && \
-			rmdir -- "$ovl_lower_dir" 2>>/dev/null
-			rmdir -- "$ovl_upper_dir/rootfs" 2>>/dev/null && \
-			rmdir -- "$ovl_upper_dir" 2>>/dev/null
-			rmdir -- "$ovl_work_dir/rootfs" 2>>/dev/null && \
-			rmdir -- "$ovl_work_dir" 2>>/dev/null
-			umount -- "$OVLROOT_BASE_DIR" && \
-			rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
-		fi
-	else
-		mount -o move -- "$ovl_lower_dir" "$OVLROOT_INIT_ROOTMNT"
-	fi
-
+if ! mv -- "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
 	exit 1
 fi
 
 rmdir -- "$OVLROOT_BASE_DIR" 2>>/dev/null
 
+trap - EXIT INT TERM
 exit 0 
