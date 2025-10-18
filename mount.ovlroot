@@ -28,8 +28,20 @@ shift 2
 
 while getopts "svnfN:o:t:" opt; do
 	case "$opt" in
-		s | v | n | f) cmd_opts="${cmd_opts:+"$cmd_opts "}-$opt" ;;
-		N) cmd_opts="${cmd_opts:+"$cmd_opts "}-$opt $OPTARG" ;;
+		s | v | n | f) 
+			if [ "x$cmd_opts" != "x" ]; then
+				cmd_opts="$cmd_opts -$opt"
+			else
+				cmd_opts="-$opt"
+			fi
+			;;
+		N)
+			if [ "x$cmd_opts" != "x" ]; then 
+				cmd_opts="$cmd_opts -N $OPTARG"
+			else
+				cmd_opts="-N $OPTARG"
+			fi
+			;;
 		o) cmd_mntopts="$OPTARG" ;;
 		t) : ;;
 	esac
@@ -42,18 +54,30 @@ for cmd in $(cat "/proc/cmdline"); do
 	esac
 done
 
-if [ "x$conf" != "x" -a "$conf" != "y" -a -s "$OVLROOT_CFGDIR/$conf" ]; then
-	. "$OVLROOT_CFGDIR/$conf"
+if [ "x$conf" != "x" ] && [ "$conf" != "y" ] && \
+   [ -s "$OVLROOT_CFGDIR/${conf}.conf" ]; then
+	. "$OVLROOT_CFGDIR/${conf}.conf"
 fi
 
-for opt in $(echo $cmd_mntopts | tr "," " "); do
+oldIFS="$IFS"
+IFS=","
+
+for opt in $cmd_mntopts; do
 	case "$opt" in
 		ovlroot_realfs=*)
 			mnt_type="${opt#"ovlroot_realfs="}" ;;
 		*)
-			mnt_opts="${mnt_opts:+"$mnt_opts,"}$opt" ;;
+			if [ "x$mnt_opts" != x ]; then
+				mnt_opts="$mnt_opts,$opt"
+			else
+				mnt_opts="$opt"
+			fi
+			;;
 	esac
 done
+
+IFS="$oldIFS"
+unset oldIFS
 
 if [ "x$OVLROOT_OVL_OPTS_OTHER" != "x" ]; then
 	ovlopts="$OVLROOT_OVL_OPTS_OTHER,"

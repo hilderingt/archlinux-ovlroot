@@ -192,6 +192,12 @@ if [ "x$root_init_mode" = "x" ]; then
 fi
 
 if [ "x$OVLROOT_NEW_FSTAB" = "x" ]; then
+	OVLROOT_NEW_FSTAB="$(mktemp 2>>/dev/null || printf '/tmp/new_fstab.%s' "$$")"
+fi
+
+if [ "x$OVLROOT_JOURNAL" = "x" ]; then
+	OVLROOT_JOURNAL="$(mktemp 2>>/dev/null || printf '/tmp/ovlroot.log.%s' "$$")"
+fi
 
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
@@ -358,7 +364,7 @@ while IFS= read -r line; do
 	else
 		echo "$line"
 	fi
-done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >"$OVLROOT_NEW_FSTAB"
+done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >>"$OVLROOT_NEW_FSTAB"
 
 if [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
 	if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
