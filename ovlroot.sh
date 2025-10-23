@@ -201,10 +201,6 @@ if [ "x$OVLROOT_NEW_FSTAB" = "x" ]; then
 	OVLROOT_NEW_FSTAB="$(mktemp 2>>/dev/null || printf '/tmp/new_fstab.%s' "$$")"
 fi
 
-if [ "x$OVLROOT_JOURNAL" = "x" ]; then
-	OVLROOT_JOURNAL="$(mktemp 2>>/dev/null || printf '/tmp/ovlroot.log.%s' "$$")"
-fi
-
 ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
