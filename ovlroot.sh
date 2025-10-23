@@ -126,8 +126,9 @@ ovl_work_dir=""
 root_init_mode=""
 root_init_opts=""
 root_new_opts=""
-journal=""
+root_new_mode="rw"
 modified="n"
+journal=""
 ovlopts=""
 fs=""
 dir="" 
@@ -369,13 +370,13 @@ while IFS= read -r line; do
 	fi
 done <"$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB" >>"$OVLROOT_NEW_FSTAB"
 
-if [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ]; then
+if [ "$root_init_mode" != "$OVLROOT_LOWER_MODE" ] || [ "x$root_new_opts" != "x" ]; then
 	if [ "$OVLROOT_LOWER_MODE" = "ro" ]; then
 		root_new_opts="$(opts_add_replace "$root_new_opts" "ro" "rw")"
 	else
 		root_new_opts="$(opts_add_replace "$root_new_opts" "rw" "ro")"
 	fi
-fi
+fi 
 
 if [ "x$root_new_opts" != "x" ]; then
 	if ! mount -o "remount,$root_new_opts" "$OVLROOT_INIT_ROOTMNT/$ovl_lower_dir"; then
