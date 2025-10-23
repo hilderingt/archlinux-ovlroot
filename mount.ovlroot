@@ -15,6 +15,51 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+shell_quote() {
+	arg="$1"
+
+	printf "%s" "'$(printf "%s" "$arg" | sed "s/'/'\"'\"'/g")'"
+}
+
+push_undo_cmd() {
+	cmd="$1"; shift
+
+	line="$cmd"
+	for arg in "$@"; do
+		quoted=$(shell_quote "$arg")
+		line="$line $quoted"
+	done
+
+	if [ "x$journal" = "x" ]; then
+		journal="$line
+"
+	else
+		journal="$line
+$journal"
+	fi
+
+	return 0
+}
+
+rollback() {
+	rc=$?
+
+	trap '' EXIT INT TERM
+
+	if [ "x$journal" != "x"  ]; then
+		while IFS= read -r cmdline; do
+			sh -c "$cmdline" 2>/dev/null
+		done <<EOD
+$journal
+EOD
+	fi
+
+	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
+	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null
+
+	exit "$rc"
+}
+
 OVLROOT_CFGDIR="/etc/ovlroot.d"
 OVLROOT_BASE_DIR="/.ovlroot"
 OVLROOT_LOWER_DIR="lowerdir"
@@ -22,6 +67,7 @@ OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
 OVLROOT_OVL_OPTS_OTHER=""
 
+journal=""
 mnt_dev="$1"
 mnt_dir="$2"
 shift 2
@@ -88,12 +134,18 @@ ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
 mkdir -p "$ovl_upper_dir/$mnt_dir"
+push_undo_cmd "cd $(shell_quote "$ovl_upper_dir"); rmdir -p $(shell_quote "$mnt_dir")" 
+
 mkdir -p "$ovl_work_dir/$mnt_dir"
+push_undo_cmd "cd $(shell_quote "$ovl_work_dir"); rmdir -p $(shell_quote "$mnt_dir")" 
 
 mount $cmd_opts -t "$mnt_type" -o "$mnt_opts" \
 "$mnt_dev" "$ovl_lower_dir/$mnt_dir"
+push_undo_cmd umount "$ovlroot_lower_dir/$mnt_dir"
+
 mount $cmd_opts -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/$mnt_dir,workdir=$ovl_work_dir/$mnt_dir" \
 "ovlroot" "$mnt_dir"
+push_undo_cmd umount "$mnt_dir"
 
 exit 0
