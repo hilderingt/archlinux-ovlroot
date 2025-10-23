@@ -205,8 +205,8 @@ ovl_lower_dir="$OVLROOT_BASE_DIR/$OVLROOT_LOWER_DIR"
 ovl_upper_dir="$OVLROOT_BASE_DIR/$OVLROOT_UPPER_DIR"
 ovl_work_dir="$OVLROOT_BASE_DIR/$OVLROOT_WORK_DIR"
 
-mkdir -p -- "$OVLROOT_BASE_DIR" || exit 1
-push_undo_cmd rmdir "$OVLROOT_BASE_DIR"
+mkdir -p "$OVLROOT_BASE_DIR" || exit 1
+push_undo_cmd "cd /; rmdir -p $(shell_quote "${OVLROOT_BASE_DIR#/}")"
 
 [ "x$OVLROOT_BASE_DEV"   = "x" ] && OVLROOT_BASE_DEV="$OVLROOT_BASE_TYPE"
 [ "x$OVLROOT_BASE_OPTS" != "x" ] && OVLROOT_BASE_OPTS="-o $OVLROOT_BASE_OPTS"
@@ -225,19 +225,20 @@ fi
 if ! mkdir -p "$ovl_lower_dir"; then
 	exit 1
 fi
-push_undo_cmd rmdir "$ovl_lower_dir"
+push_undo_cmd "cd $(shell_quote "$OVLROOT_BASE_DIR"); rmdir -p \
+$(shell_quote "$OVLROOT_LOWER_DIR")"
 
 if ! mkdir -p "$ovl_upper_dir/rootfs"; then
 	exit 1
 fi
-push_undo_cmd rmdir "$ovl_upper_dir/rootfs"
-push_undo_cmd rmdir "$ovl_upper_dir"
+push_undo_cmd "cd $(shell_quote "$OVLROOT_BASE_DIR"); rmdir -p \
+$(shell_quote "$OVLROOT_UPPER_DIR/rootfs")"
 
 if ! mkdir -p "$ovl_work_dir/rootfs"; then
 	exit 1
 fi
-push_undo_cmd rmdir "$ovl_work_dir/rootfs"
-push_undo_cmd rmdir "$ovl_work_dir"
+push_undo_cmd "cd $(shell_quote "$OVLROOT_BASE_DIR"); rmdir -p \
+$(shell_quote "$OVLROOT_WORK_DIR/rootfs")"
 
 if ! mount -o "move" "$OVLROOT_INIT_ROOTMNT" "$ovl_lower_dir"; then
 	exit 1
@@ -387,7 +388,7 @@ if ! mv "$OVLROOT_NEW_FSTAB" "$OVLROOT_INIT_ROOTMNT/$OVLROOT_FSTAB"; then
 	exit 1
 fi
 
-rmdir "$OVLROOT_BASE_DIR" 2>>/dev/null
+(cd "/"; rmdir -p "${OVLROOT_BASE_DIR#/}")
 
 trap - EXIT INT TERM
 exit 0 
