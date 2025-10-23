@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+trap rollback EXIT INT TERM
+
 shell_quote() {
 	arg="$1"
 
@@ -147,5 +149,7 @@ mount $cmd_opts -t "overlay" -o "${ovlopts}lowerdir=$ovl_lower_dir,\
 upperdir=$ovl_upper_dir/$mnt_dir,workdir=$ovl_work_dir/$mnt_dir" \
 "ovlroot" "$mnt_dir"
 push_undo_cmd umount "$mnt_dir"
+
+trap - EXIT INT TERM
 
 exit 0
