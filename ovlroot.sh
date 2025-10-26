@@ -79,14 +79,14 @@ rollback() {
 
 	if [ "x$journal" != "x"  ]; then
 		while IFS= read -r cmdline; do
-			sh -c "$cmdline" 2>/dev/null
+			sh -c "$cmdline"
 		done <<EOD
 $journal
 EOD
 	fi
 
 	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
-	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null
+	rm -f "$OVLROOT_NEW_FSTAB"
 
 	exit "$rc"
 }
