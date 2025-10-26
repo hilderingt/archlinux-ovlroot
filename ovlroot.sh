@@ -85,7 +85,7 @@ $journal
 EOD
 	fi
 
-	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
+	[ "x$OVLROOT_NEW_FSTAB" != "x" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
 	rm -f "$OVLROOT_NEW_FSTAB"
 
 	exit "$rc"
