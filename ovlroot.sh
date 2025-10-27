@@ -79,7 +79,9 @@ rollback() {
 
 	if [ "x$journal" != "x"  ]; then
 		while IFS= read -r cmdline; do
-			sh -c "$cmdline"
+			if ! sh -c "$cmdline" && [ "x$OVLROOT_ABORT_RO_ON_ERROR" = "xy" ]; then
+				exit "$rc"
+			fi
 		done <<EOD
 $journal
 EOD
@@ -106,6 +108,7 @@ OVLROOT_NEW_FSTAB=""
 OVLROOT_LOWER_MODE="ro"
 OVLROOT_OVL_OPTS_ROOT=""
 OVLROOT_ROOT_FSTAB_OPTS="n"
+OVLROOT_ABORT_RO_ON_ERROR="n"
 OVLROOT_LIST_SEP=","
 OVLROOT_OVERLAY=""
 OVLROOT_DISABLE=""

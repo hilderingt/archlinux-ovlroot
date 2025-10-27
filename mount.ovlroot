@@ -50,14 +50,16 @@ rollback() {
 
 	if [ "x$journal" != "x"  ]; then
 		while IFS= read -r cmdline; do
-			sh -c "$cmdline" 2>/dev/null
+			if ! sh -c "$cmdline" && [ "x$OVLROOT_ABORT_RO_ON_ERROR" = "xy" ]; then
+				exit "$rc"
+			fi
 		done <<EOD
 $journal
 EOD
 	fi
 
 	[ -n "$OVLROOT_NEW_FSTAB" ] && [ -f "$OVLROOT_NEW_FSTAB" ] && \
-	rm -f -- "$OVLROOT_NEW_FSTAB" 2>/dev/null
+	rm -f "$OVLROOT_NEW_FSTAB"
 
 	exit "$rc"
 }
@@ -67,6 +69,7 @@ OVLROOT_BASE_DIR="/.ovlroot"
 OVLROOT_LOWER_DIR="lowerdir"
 OVLROOT_UPPER_DIR="upperdir"
 OVLROOT_WORK_DIR="workdir"
+OVLROOT_ABORT_RO_ON_ERROR="n"
 OVLROOT_OVL_OPTS_OTHER=""
 
 journal=""
