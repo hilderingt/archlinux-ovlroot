@@ -3,7 +3,7 @@
 run_latehook() {
 	local conf=""
 
-	if [ "x$ovlroot" != "x" -a "$ovlroot" != "y" ]; then
+	if [ "x$ovlroot" != "x" ] && [ "$ovlroot" != "y" ]; then
 		conf="$ovlroot"
 	fi
 

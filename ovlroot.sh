@@ -149,7 +149,7 @@ _dir=""
 [ "x$OVLROOT_BASE_DIR" = "x" ]     && exit 1
 [ "x$OVLROOT_LOWER_DIR" = "x" ]    && \
 [ "x$OVLROOT_UPPER_DIR" = "x" ]    && \
-[  "x$OVLROOT_WORK_DIR" = "x" ]    && exit 1
+[ "x$OVLROOT_WORK_DIR" = "x" ]     && exit 1
 [ "x$OVLROOT_BASE_TYPE" = "x" ]    && \
 [ "x$OVLROOT_BASE_DEV" = "x" ]     && exit 1
 [ "x$OVLROOT_LIST_SEP" = "x" ]     && OVLROOT_LIST_SEP=","
